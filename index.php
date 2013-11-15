@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<title>The History of Four-Footed Beasts and Serpents</title>
+	<title>Hello World</title>
 </head>
 <body>
 <p>A Little Printer publication</p>
