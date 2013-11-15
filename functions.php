@@ -87,7 +87,7 @@ function display_edition() {
 
 	$i = 1;
 	$hour = (int) $date->format('G');
-	switch(true) {
+	switch(TRUE) {
 		case in_array($hour, range(0, 3));
 			$i = 2;
 			break;
@@ -112,6 +112,63 @@ function display_edition() {
 	$greeting = sprintf('%s, %s', $GREETINGS[$language][$i], $name);
 
 	require $_SERVER['DOCUMENT_ROOT'] . $ROOT_DIRECTORY . 'template.php';
+}
+
+/**
+ * == POST parameters:
+ * :config
+ *   params[:config] contains a JSON array of responses to the options defined
+ *   by the fields object in meta.json. In this case, something like:
+ *   params[:config] = ["name":"SomeName", "lang":"SomeLanguage"]
+ *
+ * == Returns:
+ * A JSON response object.
+ * If the parameters passed in are valid: {"valid":true}
+ * If the parameters passed in are not valid: {"valid":false,"errors":["No name was provided"], ["The language you chose does not exist"]}
+ */
+function display_validate_config() {
+	global $GREETINGS;
+
+	if (array_key_exists('config', $_POST)) {
+		$config = $_POST['config'];
+	} else {
+		header('HTTP/1.0 400 Bad Request');
+		print 'There is no config to validate';
+		exit();
+	}
+
+	// Preparing what will be returned:
+	$response = array(
+		'errors' => array(),
+		'valid' => TRUE
+	);
+
+	// Extract the config from the POST data and parse its JSON contents.
+	// user_settings will be something like:
+	// {"name":"Alice", "lang":"english"}.
+	$user_settings = json_decode(stripslashes($config), TRUE);
+
+	// If the user did not choose a language:
+	if ( ! array_key_exists('lang', $user_settings) || $user_settings['lang'] == '') {
+		$response['valid'] = FALSE;
+		array_push($response['errors'], 'Please choose a language from the menu.');
+	}
+
+	// If the user did not fill in the name option:
+	if ( ! array_key_exists('name', $user_settings) || $user_settings['name'] == '') {
+		$response['valid'] = FALSE;
+		array_push($response['errors'], 'Please enter your name into the name box.');
+	}
+
+	if ( ! array_key_exists(strtolower($user_settings['lang']), $GREETINGS)) {
+		// Given that the select field is populated from a list of languages
+		// we defined this should never happen. Just in case.
+		$response['valid'] = FALSE;
+		array_push($response['errors'], sprintf("We couldn't find the language you selected (%s). Please choose another.", $user_settings['lang']));
+	}
+
+	header('Content-type: application/json');
+	echo json_encode($response);
 }
 
 
