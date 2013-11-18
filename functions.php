@@ -18,103 +18,6 @@ $GREETINGS = array(
 
 
 /**
- * Called to generate the sample shown on BERG Cloud Remote.
- */
-function display_sample() {
-	global $ROOT_DIRECTORY, $GREETINGS;
-
-	# The values we'll use for the sample:
-	$language = 'english';
-	$name = 'Little Printer';
-	
-	$greeting = sprintf('%s, %s', $GREETINGS[$language][0], $name);
-
-	# Set the ETag to match the content.
-	header("Content-Type: text/html; charset=utf-8");
-	header('ETag: "' . md5($language . $name . gmdate('dmY')) . '"');
-	require $_SERVER['DOCUMENT_ROOT'] . $ROOT_DIRECTORY . 'template.php';
-}
-
-
-/**
- * Prepares and returns an edition of the publication.
- *
- * Expects GET values of 'lang' and 'name'.
- */
-function display_edition() {
-	global $ROOT_DIRECTORY, $GREETINGS;
-
-	// We ignore timezones, but have to set a timezone or PHP will complain.
-	date_default_timezone_set('UTC');
-
-	if (array_key_exists('lang', $_GET)) {
-		$language = $_GET['lang'];
-	} else {
-		$language = '';
-	}
-
-	if (array_key_exists('name', $_GET)) {
-		$name = $_GET['name'];
-	} else {
-		$name = '';
-	}
-
-	if ($language == '' || ! array_key_exists($language, $GREETINGS)) {
-		header('HTTP/1.0 400 Bad Request');
-		print 'Error: Invalid or missing lang parameter';
-		exit();
-	}
-	if ($name == '') {
-		header('HTTP/1.0 400 Bad Request');
-		print 'Error: No name provided';
-		exit();
-	}
-	try {
-		// local_delivery_time is like '2013-10-16T23:20:30-08:00'.
-		$date = new DateTime($_GET['local_delivery_time']);
-	} catch(Exception $e) {
-		header('HTTP/1.0 400 Bad Request');
-		print 'Error: Invalid or missing local_delivery_time';
-		exit();
-	}
-
-	// The publication is only delivered on Mondays, so if it's not a Monday in
-    // the subscriber's timezone, we return nothing but a 204 status.
-	if ($date->format('D') !== 'Mon') {
-		http_response_code(204);
-		exit();
-	}
-
-	$i = 1;
-	$hour = (int) $date->format('G');
-	switch(TRUE) {
-		case in_array($hour, range(0, 3));
-			$i = 2;
-			break;
-		case in_array($hour, range(4, 11));
-			$i = 0;
-			break;
-		case in_array($hour, range(12, 17));
-			$i = 1;
-			break;
-		case in_array($hour, range(18, 23));
-			$i = 2;
-			break;
-	}
-
-	// Base the ETag on the unique content: language, name and time/date.
-	// This means the user will not get the same content twice.
-	// But, if they reset their subscription (with, say, a different language)
-	// they will get new content.
-	header("Content-Type: text/html; charset=utf-8");
-	header('ETag: "' . md5($language . $name . $date->format('HdmY')) . '"');
-
-	$greeting = sprintf('%s, %s', $GREETINGS[$language][$i], $name);
-
-	require $_SERVER['DOCUMENT_ROOT'] . $ROOT_DIRECTORY . 'template.php';
-}
-
-/**
  * == POST parameters:
  * :config
  *   params[:config] contains a JSON array of responses to the options defined
@@ -169,6 +72,105 @@ function display_validate_config() {
 
 	header('Content-type: application/json');
 	echo json_encode($response);
+}
+
+
+/**
+ * Called to generate the sample shown on BERG Cloud Remote.
+ */
+function display_sample() {
+	global $ROOT_DIRECTORY, $GREETINGS;
+
+	// The values we'll use for the sample:
+	$language = 'english';
+	$name = 'Little Printer';
+	
+	$greeting = sprintf('%s, %s', $GREETINGS[$language][0], $name);
+
+	// Set the ETag to match the content.
+	header("Content-Type: text/html; charset=utf-8");
+	header('ETag: "' . md5($language . $name . gmdate('dmY')) . '"');
+	require $_SERVER['DOCUMENT_ROOT'] . $ROOT_DIRECTORY . 'template.php';
+}
+
+
+/**
+ * Prepares and returns an edition of the publication.
+ *
+ * Expects GET values of 'lang' and 'name'.
+ */
+function display_edition() {
+	global $ROOT_DIRECTORY, $GREETINGS;
+
+	// We ignore timezones, but have to set a timezone or PHP will complain.
+	date_default_timezone_set('UTC');
+
+	if (array_key_exists('lang', $_GET)) {
+		$language = $_GET['lang'];
+	} else {
+		$language = '';
+	}
+
+	if (array_key_exists('name', $_GET)) {
+		$name = $_GET['name'];
+	} else {
+		$name = '';
+	}
+
+	if ($language == '' || ! array_key_exists($language, $GREETINGS)) {
+		header('HTTP/1.0 400 Bad Request');
+		print 'Error: Invalid or missing lang parameter';
+		exit();
+	}
+	if ($name == '') {
+		header('HTTP/1.0 400 Bad Request');
+		print 'Error: No name provided';
+		exit();
+	}
+	try {
+		// local_delivery_time is like '2013-11-18T23:20:30-08:00'.
+		$date = new DateTime($_GET['local_delivery_time']);
+	} catch(Exception $e) {
+		header('HTTP/1.0 400 Bad Request');
+		print 'Error: Invalid or missing local_delivery_time';
+		exit();
+	}
+
+	// The publication is only delivered on Mondays, so if it's not a Monday in
+    // the subscriber's timezone, we return nothing but a 204 status.
+	if ($date->format('D') !== 'Mon') {
+		http_response_code(204);
+		exit();
+	}
+
+	// Pick a time of day appropriate greeting.
+	$i = 1;
+	$hour = (int) $date->format('G');
+	switch(TRUE) {
+		case in_array($hour, range(0, 3));
+			$i = 2;
+			break;
+		case in_array($hour, range(4, 11));
+			$i = 0;
+			break;
+		case in_array($hour, range(12, 17));
+			$i = 1;
+			break;
+		case in_array($hour, range(18, 23));
+			$i = 2;
+			break;
+	}
+
+	// Base the ETag on the unique content: language, name and time/date.
+	// This means the user will not get the same content twice.
+	// But, if they reset their subscription (with, say, a different language)
+	// they will get new content.
+	header("Content-Type: text/html; charset=utf-8");
+	header('ETag: "' . md5($language . $name . $date->format('HdmY')) . '"');
+
+	$greeting = sprintf('%s, %s', $GREETINGS[$language][$i], $name);
+
+	require $_SERVER['DOCUMENT_ROOT'] . $ROOT_DIRECTORY . 'template.php';
 }
 
 
